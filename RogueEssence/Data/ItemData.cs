@@ -83,6 +83,11 @@ namespace RogueEssence.Data
         public bool BagEffect;
 
         /// <summary>
+        /// If set to true, the item can be used outside of a dungeon.
+        /// </summary>
+        public bool CanUseOutsideOfDungeon;
+
+        /// <summary>
         /// Special variables that this item contains.
         /// They are potentially checked against in a select number of battle events.
         /// </summary>
@@ -102,7 +107,7 @@ namespace RogueEssence.Data
         /// The effects of using the item.
         /// </summary>
         public BattleData UseEvent;
-
+        
         /// <summary>
         /// Define whether this is a food, drink, etc for the proper sound/animation on use
         /// "None" and "ammo" will prevent use, but UseEffect can still be triggered by throwing it.

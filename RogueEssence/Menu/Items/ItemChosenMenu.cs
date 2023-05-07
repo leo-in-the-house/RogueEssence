@@ -41,7 +41,7 @@ namespace RogueEssence.Menu
             //able to use if an item is not held, or if an item is held, but the focused character is the holder
             if (!held || holder)
             {
-                if (GameManager.Instance.CurrentScene == GroundScene.Instance)
+                if (GameManager.Instance.CurrentScene == GroundScene.Instance && !entry.CanUseOutsideOfDungeon)
                 {
                     switch (entry.UsageType)
                     {
@@ -52,7 +52,7 @@ namespace RogueEssence.Menu
                             }
                     }
                 }
-                else if (GameManager.Instance.CurrentScene == DungeonScene.Instance)
+                else if (GameManager.Instance.CurrentScene == DungeonScene.Instance || entry.CanUseOutsideOfDungeon)
                 {
                     switch (entry.UsageType)
                     {
@@ -190,7 +190,7 @@ namespace RogueEssence.Menu
         {
             //character uses the item himself
             MenuManager.Instance.ClearMenus();
-            MenuManager.Instance.EndAction = DungeonScene.Instance.ProcessPlayerInput(new GameAction(GameAction.ActionType.UseItem, Dir8.None, getItemUseSlot(), -1));
+            MenuManager.Instance.EndAction = (GameManager.Instance.CurrentScene == DungeonScene.Instance) ? DungeonScene.Instance.ProcessPlayerInput(new GameAction(GameAction.ActionType.UseItem, Dir8.None, getItemUseSlot(), -1)) : GroundScene.Instance.ProcessInput(new GameAction(GameAction.ActionType.UseItem, Dir8.None, getItemUseSlot(), -1));;
         }
 
         private void PutBackAction()
