@@ -10,12 +10,43 @@
     <vm:MapTabSpawnsViewModel/>
   </Design.DataContext>
   <Grid Margin="4" >
-    <Grid.ColumnDefinitions>
-      <ColumnDefinition/>
-    </Grid.ColumnDefinitions>
     <Grid.RowDefinitions>
       <RowDefinition/>
+      <RowDefinition/>
+      <RowDefinition/>
+      <RowDefinition/>
+      <RowDefinition Height="200"/>
+      <RowDefinition/>
+      <RowDefinition/>
+      <RowDefinition/>
+      <RowDefinition Height="150"/>
     </Grid.RowDefinitions>
-    <TextBlock Margin="4">TODO</TextBlock>
+    <Grid.ColumnDefinitions>
+      <ColumnDefinition/>
+      <ColumnDefinition/>
+      <ColumnDefinition/>
+      <ColumnDefinition/>
+    </Grid.ColumnDefinitions>
+    <TextBlock Margin="4,1" VerticalAlignment="Bottom" HorizontalAlignment="Center" Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="4">Money:</TextBlock>
+    <TextBlock Margin="4,1" VerticalAlignment="Center" Grid.Row="1" Grid.Column="0">Min:</TextBlock>
+    <NumericUpDown Value="{Binding MoneyMin}" Minimum="0" VerticalAlignment="Center" Margin="4,1" Grid.Row="1" Grid.Column="1"></NumericUpDown>
+    <TextBlock Margin="4,1" VerticalAlignment="Center" Grid.Row="1" Grid.Column="2">Max:</TextBlock>
+    <NumericUpDown Value="{Binding MoneyMax}" Minimum="0" VerticalAlignment="Center" Margin="4,1" Grid.Row="1" Grid.Column="3"></NumericUpDown>
+
+    <TextBlock Margin="4,1" VerticalAlignment="Center" Grid.Row="2" Grid.Column="0">Respawn Time:</TextBlock>
+    <NumericUpDown Value="{Binding RespawnTime}" Minimum="0" VerticalAlignment="Center" Margin="4,1" Grid.Row="2" Grid.Column="1"></NumericUpDown>
+   
+    <TextBlock Margin="4,1" VerticalAlignment="Bottom" Grid.Row="3" HorizontalAlignment="Center" Grid.Column="0" Grid.ColumnSpan="4">Entities:</TextBlock>
+    <views:SpawnBoxWithAlly VerticalAlignment="Center" Margin="4,1" DataContext="{Binding SpawnBoxWithAlly}"  Grid.Row="4" Grid.Column="0"  Grid.ColumnSpan="4" />
+    
+    <TextBlock Margin="4,1" VerticalAlignment="Center" Grid.Row="5" Grid.Column="0">Clump Factor:</TextBlock>
+    <NumericUpDown Value="{Binding ClumpFactor}" Minimum="0" VerticalAlignment="Center" Margin="4,1" Grid.Row="5" Grid.Column="1"></NumericUpDown>
+
+    <TextBlock Margin="4,1" VerticalAlignment="Center" Grid.Row="6" Grid.Column="0">Number of Foes:</TextBlock>
+    <NumericUpDown Value="{Binding MaxFoes}" Minimum="0" VerticalAlignment="Center" Margin="4,1" Grid.Row="6" Grid.Column="1"></NumericUpDown>
+
+    <TextBlock Margin="4" VerticalAlignment="Center" Grid.Row="7" Grid.Column="0">Items</TextBlock>
+    <views:CollectionBox DataContext="{Binding Items}" Margin="8" Grid.Row="0" Grid.ColumnSpan="4"/>
+
   </Grid>
 </UserControl>

@@ -16,15 +16,27 @@ namespace RogueEssence.Dev.ViewModels
     {
         public MapTabSpawnsViewModel()
         {
-
+            DevForm form = (DevForm)DiagManager.Instance.DevEditor;
+            SpawnBoxWithAlly = new SpawnBoxWithAllyViewModel();
+            Items = new CollectionBoxViewModel(form.MapEditForm, new StringConv(typeof(InvItem), new object[0]));
         }
 
         //MaxFoes
+        public int MaxFoes { get; set; }
+        
         //RespawnTime
+        public int RespawnTime { get; set; }
+        
         //Spawns
+        public SpawnBoxWithAllyViewModel SpawnBoxWithAlly { get; set; }
+        public int ClumpFactor { get; set; }
+        
         //MoneyAmount
+        public int MoneyMin { get; set; }
+        public int MoneyMax { get; set; }
+        
         //ItemSpawns
-
+        public CollectionBoxViewModel Items { get; set; }
 
         public void LoadMapSpawns()
         {

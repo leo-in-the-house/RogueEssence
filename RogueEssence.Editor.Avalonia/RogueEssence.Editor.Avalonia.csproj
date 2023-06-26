@@ -46,6 +46,9 @@
     <Compile Update="DataEditor\SpawnRangeListBox.axaml.cs">
       <DependentUpon>SpawnRangeListBox.axaml</DependentUpon>
     </Compile>
+    <Compile Update="DataEditor\SpawnBoxWithAlly.axaml.cs">
+      <DependentUpon>SpawnBoxWithAlly.axaml</DependentUpon>
+    </Compile>
     <Compile Update="DataEditor\SpawnListBox.axaml.cs">
       <DependentUpon>SpawnListBox.axaml</DependentUpon>
     </Compile>
@@ -174,6 +177,10 @@
     </Compile>
     <Compile Update="DataEditor\Editors\RogueEssence\Tiles\TileBrowser.axaml.cs">
       <DependentUpon>TileBrowser.axaml</DependentUpon>
+    </Compile>
+    <Compile Update="DataEditor\SpawnBoxWithAlly.axaml.cs">
+      <DependentUpon>SpawnBoxWithAlly.axaml</DependentUpon>
+      <SubType>Code</SubType>
     </Compile>
   </ItemGroup>
   <ItemGroup>

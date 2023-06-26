@@ -1,0 +1,73 @@
+﻿<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:RogueEssence.Dev.ViewModels;assembly=RogueEssence.Editor.Avalonia"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             xmlns:converters="clr-namespace:RogueEssence.Dev.Converters"
+             x:Class="RogueEssence.Dev.Views.SpawnBoxWithAlly">
+  <Design.DataContext>
+    <vm:SpawnBoxWithAllyViewModel/>
+  </Design.DataContext>
+  <UserControl.Resources>
+    <converters:ValidIdxConverter x:Key="ValidIdxConverter"/>
+  </UserControl.Resources>
+
+  <Grid>
+    <Grid.RowDefinitions>
+      <RowDefinition/>
+      <RowDefinition Height="30"/>
+      <RowDefinition Height="30"/>
+    </Grid.RowDefinitions>
+    <Grid.ColumnDefinitions>
+      <ColumnDefinition/>
+    </Grid.ColumnDefinitions>
+
+    <Grid Grid.Row="0">
+      <Grid.RowDefinitions>
+        <RowDefinition/>
+        <RowDefinition/>
+      </Grid.RowDefinitions>
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition/>
+        <ColumnDefinition Width="40"/>
+      </Grid.ColumnDefinitions>
+      <DataGrid Name="gridItems" IsReadOnly="true" Items="{Binding Collection}" SelectedIndex="{Binding CurrentElement, Mode=TwoWay}" DoubleTapped="doubleClickStart" PointerReleased="gridCollection_DoubleClick" Margin="4 0" Grid.RowSpan="1" Grid.ColumnSpan="1" MinHeight="80">
+        <DataGrid.Columns>
+          <DataGridTextColumn Header="Value"
+                        Binding="{Binding Value}" />
+          <DataGridTextColumn Header="Is Ally"
+                              Binding="{Binding Path=IsAlly}" />
+        </DataGrid.Columns>
+      </DataGrid>
+      <Button Command="{Binding btnUp_Click}" Margin="4 0" Grid.Row="0" Grid.Column="1">^</Button>
+      <Button Command="{Binding btnDown_Click}" Margin="4 0" Grid.Row="1" Grid.Column="1">v</Button>
+    </Grid>
+
+    <Grid Grid.Row="1">
+      <Grid.RowDefinitions>
+        <RowDefinition/>
+      </Grid.RowDefinitions>
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition/>
+        <ColumnDefinition Width="100"/>
+      </Grid.ColumnDefinitions>
+      <TextBlock VerticalAlignment="Center" HorizontalAlignment="Right" Margin="4 0" Grid.Row="0" Grid.Column="0">Weight:</TextBlock>
+      <CheckBox IsEnabled="{Binding Path=CurrentElement, Converter={StaticResource ValidIdxConverter}, ConverterParameter=false}" IsChecked="{Binding CurrentIsAlly}" Margin="4 0" Grid.Row="0" Grid.Column="1"/>
+    </Grid>
+
+    <Grid Grid.Row="2">
+      <Grid.RowDefinitions>
+        <RowDefinition/>
+      </Grid.RowDefinitions>
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition/>
+        <ColumnDefinition/>
+      </Grid.ColumnDefinitions>
+      <Button Command="{Binding btnAdd_Click}" Margin="4 0" Grid.Row="0" Grid.Column="0">Add</Button>
+      <Button Command="{Binding btnDelete_Click}" Margin="4 0" Grid.Row="0" Grid.Column="1">Delete</Button>
+    </Grid>
+    
+  </Grid>
+  
+</UserControl>
