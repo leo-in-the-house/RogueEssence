@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Text;
+using RogueEssence.LevelGen;
 
 namespace RogueEssence.Dev.ViewModels
 {
@@ -17,7 +18,7 @@ namespace RogueEssence.Dev.ViewModels
         public MapTabSpawnsViewModel()
         {
             DevForm form = (DevForm)DiagManager.Instance.DevEditor;
-            SpawnBoxWithAlly = new SpawnBoxWithAllyViewModel();
+            SpawnBoxWithAlly = new SpawnBoxWithAllyViewModel(form.MapEditForm, new StringConv(typeof(SpecificTeamSpawner), new object[0]));
             Items = new CollectionBoxViewModel(form.MapEditForm, new StringConv(typeof(InvItem), new object[0]));
         }
 
