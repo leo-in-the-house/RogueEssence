@@ -289,8 +289,6 @@ namespace RogueEssence.Script
             UpgradeSave,
             Restart,
             Update,
-            SaveData,
-            LoadSavedData,
 
             MusicChange,
             GroundEntityInteract,
@@ -873,7 +871,7 @@ namespace RogueEssence.Script
                 loaded.ActiveTeam.LoadLua();
             }
             //Tell the script we've just resumed a save!
-            m_scrsvc.Publish(EServiceEvents.LoadSavedData.ToString());
+            m_scrsvc.Publish("LoadSavedData");
         }
 
         /// <summary>
@@ -885,7 +883,7 @@ namespace RogueEssence.Script
             m_scrsvc.Publish("SaveData");
 
             //Save script engine stuff here!
-            DiagManager.Instance.LogInfo(EServiceEvents.SaveData.ToString());
+            DiagManager.Instance.LogInfo("LuaEngine.SaveData()..");
             LuaTable tbl = LuaState.GetTable(SCRIPT_VARS_NAME);
             save.ScriptVars = SaveLuaTable(tbl);
             save.ActiveTeam.SaveLua();
@@ -1864,7 +1862,6 @@ namespace RogueEssence.Script
             DiagManager.Instance.LogInfo("LuaEngine.OnLossPenalty()..");
             yield return CoroutineManager.Instance.StartCoroutine(m_scrsvc.PublishCoroutine(EServiceEvents.LossPenalty.ToString(), save));
         }
-        
         /// <summary>
         /// Called when the game mode switches to GroundMode!
         /// </summary>
