@@ -1264,7 +1264,7 @@ namespace RogueEssence
                 }
                 else if (!Paused)
                 {
-                    double speedMult = Math.Pow(2, (int)DebugSpeed);
+                    double speedMult = Math.Pow(2, (int)DebugSpeed) + 0.4;
                     if (DebugSpeed <= GameSpeed.Normal)
                     {
                         //if actions are ready for queue, get a new result
