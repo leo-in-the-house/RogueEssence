@@ -175,11 +175,7 @@ namespace RogueEssence.Ground
 
         //public IEnumerator<YieldInstruction> CheckEXP()
 
-        public IEnumerator<YieldInstruction> HandoutEXP(Character character, int expToGain)
-        {
-            character.EXP += expToGain;
-            yield return CoroutineManager.Instance.StartCoroutine(HandoutLevelUp());
-        }
+        //public void HandoutEXP()
 
         public IEnumerator<YieldInstruction> LevelUpChar(Character character, int numLevels)
         {
