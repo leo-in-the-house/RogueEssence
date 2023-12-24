@@ -497,18 +497,7 @@ namespace RogueEssence.Dungeon
             return new_mob;
         }
 
-        /// <summary>
-        /// When the character is removed from the map, we need to revert form changes and remove statuses
-        /// </summary>
         public void OnRemove()
-        {
-            clearStatus(false);
-
-            //Do not refresh types and intrinsics from the character to avoid triggering effects on death that have been wiped
-            RestoreForm(true);
-        }
-
-        private void clearStatus(bool includeCarryOver)
         {
             //remove all status from this character without saying anything
             List<string> keys = new List<string>();
@@ -517,7 +506,7 @@ namespace RogueEssence.Dungeon
             {
                 StatusEffect status = StatusEffects[keys[ii]];
                 StatusData data = (StatusData)status.GetData();
-                if (!includeCarryOver && data.CarryOver)
+                if (data.CarryOver)
                     continue;
                 StatusEffects.Remove(keys[ii]);
                 //need to remove the backreferences on their targets
@@ -536,6 +525,9 @@ namespace RogueEssence.Dungeon
                 if (otherStatus != null)
                     otherStatus.TargetChar = null;
             }
+
+            //Do not refresh types and intrinsics from the character to avoid triggering effects on death that have been wiped
+            RestoreForm(false);
         }
 
         private List<int> baseRestore()
@@ -898,10 +890,7 @@ namespace RogueEssence.Dungeon
                 }
             }
 
-            //clear all status
-            clearStatus(false);
-            //Do not refresh types and intrinsics from the character to avoid triggering effects on death that have been wiped
-            RestoreForm(false);
+            OnRemove();
 
             DefeatAt = ZoneManager.Instance.CurrentMap.GetColoredName();
             //}
@@ -929,10 +918,7 @@ namespace RogueEssence.Dungeon
                     }
                 }
 
-                //clear all status
-                clearStatus(false);
-                //Do not refresh types and intrinsics from the character to avoid triggering effects on death that have been wiped
-                RestoreForm(false);
+                OnRemove();
 
                 DefeatAt = ZoneManager.Instance.CurrentMap.GetColoredName();
                 //DefeatDungeon = ZoneManager.Instance.CurrentZoneID;
