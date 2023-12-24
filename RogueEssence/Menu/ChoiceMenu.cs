@@ -16,7 +16,7 @@ namespace RogueEssence.Menu
 
         public ChoiceMenu()
         {
-            cursor = new MenuCursor(this, Dir4.Right);
+            cursor = new MenuCursor(this);
             NonChoices = new List<IMenuElement>();
             Choices = new List<IChoosable>();
         }
