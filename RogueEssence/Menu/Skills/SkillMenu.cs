@@ -19,7 +19,7 @@ namespace RogueEssence.Menu
         public SkillMenu(int teamIndex) : this(teamIndex, -1) { }
         public SkillMenu(int teamIndex, int skillSlot)
         {
-            int menuWidth = 168;
+            int menuWidth = 160;
 
             List<Character> openPlayers = new List<Character>();
             foreach (Character character in DataManager.Instance.Save.ActiveTeam.Players)
