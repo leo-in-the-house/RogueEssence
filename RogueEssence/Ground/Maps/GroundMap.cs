@@ -42,38 +42,15 @@ namespace RogueEssence.Ground
         /// </summary>
         public int TexSize { get; private set; }
         public int TileSize { get { return TexSize * GraphicsManager.TEX_SIZE; } }
-
-        /// <summary>
-        /// Width of the map in tiles
-        /// </summary>
         public int Width { get { return Layers[0].Tiles.Length; } }
-
-        /// <summary>
-        /// Height of the map in tiles
-        /// </summary>
         public int Height { get { return Layers[0].Tiles[0].Length; } }
-
-        /// <summary>
-        /// Size of the map in tiles
-        /// </summary>
         public Loc Size { get { return new Loc(Width, Height); } }
 
         public int TexWidth { get { return Width * TexSize; } }
         public int TexHeight { get { return Height * TexSize; } }
 
-        /// <summary>
-        /// Width of the map in pixels
-        /// </summary>
         public int GroundWidth { get { return Width * TileSize; } }
-
-        /// <summary>
-        /// Height of the map in pixels
-        /// </summary>
         public int GroundHeight { get { return Height * TileSize; } }
-
-        /// <summary>
-        /// Size of the map in pixels
-        /// </summary>
         public Loc GroundSize { get { return new Loc(GroundWidth, GroundHeight); } }
 
         /// <summary>
@@ -286,7 +263,7 @@ namespace RogueEssence.Ground
                     obstacles[ii][jj] = new GroundWall(ii * divSize, jj * divSize, divSize, divSize);
             }
 
-            this.grid = new AABB.Grid(MathUtils.DivUp(GroundWidth, GraphicsManager.TileSize), MathUtils.DivUp(GroundHeight, GraphicsManager.TileSize), GraphicsManager.TileSize);
+            this.grid = new AABB.Grid(width, height, GraphicsManager.TileSize);
         }
 
 
@@ -602,7 +579,7 @@ namespace RogueEssence.Ground
                 }
             }
 
-            this.grid = new AABB.Grid(MathUtils.DivUp(GroundWidth, GraphicsManager.TileSize), MathUtils.DivUp(GroundHeight, GraphicsManager.TileSize), GraphicsManager.TileSize);
+            this.grid = new AABB.Grid(width, height, GraphicsManager.TileSize);
         }
 
         public void Retile(int texSize)
@@ -622,7 +599,7 @@ namespace RogueEssence.Ground
             RogueElements.Grid.ResizeJustified(ref obstacles,
                 newWidth * TexSize, newHeight * TexSize, Dir8.DownRight, blockChangeOp, blocknewOp);
 
-            this.grid = new AABB.Grid(MathUtils.DivUp(GroundWidth, GraphicsManager.TileSize), MathUtils.DivUp(GroundHeight, GraphicsManager.TileSize), GraphicsManager.TileSize);
+            this.grid = new AABB.Grid(newWidth, newHeight, GraphicsManager.TileSize);
         }
 
         public void AddLayer(string name)
@@ -1102,7 +1079,7 @@ namespace RogueEssence.Ground
         internal void OnDeserializedMethod(StreamingContext context)
         {
             //recompute the grid
-            grid = new AABB.Grid(MathUtils.DivUp(GroundWidth, GraphicsManager.TileSize), MathUtils.DivUp(GroundHeight, GraphicsManager.TileSize), GraphicsManager.TileSize);
+            grid = new AABB.Grid(Width, Height, GraphicsManager.TileSize);
 
             if (ActiveChar != null)
             {
