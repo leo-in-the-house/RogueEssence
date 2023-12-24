@@ -118,7 +118,6 @@ namespace RogueEssence.Data
         public ProfilePic[] ProfilePics;
 
         public bool NoSwitching;
-        public bool NoRecruiting;
         public RescueState Rescue;
 
         public ZoneLoc NextDest;
