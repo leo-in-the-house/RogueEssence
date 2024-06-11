@@ -26,6 +26,9 @@ namespace RogueEssence
     public static class Text
     {
         public const string DIVIDER_STR = "\n";
+        public const string STRINGS_FILE_NAME = "strings";
+        public const string STRINGS_FILE_EXT = ".resx";
+
         public static Dictionary<string, string> Strings;
         public static Dictionary<string, string> StringsEx;
         public static CultureInfo Culture;
@@ -205,6 +208,93 @@ namespace RogueEssence
                 DiagManager.Instance.LogError(ex);
                 return new Dictionary<string, (string, string)>();
             }
+        }
+
+
+        public static Dictionary<string, string> LoadStringDict(string code, string basePath, string packagefilepath)
+        {
+            Dictionary<string, string> xmlDict = new Dictionary<string, string>();
+
+            //order of string fallbacks:
+            //first go through all mods of the original language
+            foreach (ModHeader mod in PathMod.FallbackMods(basePath))
+            {
+                string modulePath = PathMod.HardMod(mod.Path, Path.Join(basePath, mod.Namespace, packagefilepath, STRINGS_FILE_NAME + "." + code + ".resx"));
+                if (File.Exists(modulePath))
+                {
+                    Dictionary<string, string> dict = LoadStringResx(modulePath);
+                    foreach (string key in dict.Keys)
+                    {
+                        if (!xmlDict.ContainsKey(key))
+                            xmlDict.Add(key, dict[key]);
+                    }
+                }
+            }
+
+            //then go through all mods of the official fallbacks
+            if (Text.LangNames.ContainsKey(code))
+            {
+                foreach (string fallback in Text.LangNames[code].Fallbacks)
+                {
+                    foreach (ModHeader mod in PathMod.FallbackMods(basePath))
+                    {
+                        string modulePath = PathMod.HardMod(mod.Path, Path.Join(basePath, mod.Namespace, packagefilepath, STRINGS_FILE_NAME + "." + fallback + ".resx"));
+                        if (File.Exists(modulePath))
+                        {
+                            Dictionary<string, string> dict = LoadStringResx(modulePath);
+                            foreach (string key in dict.Keys)
+                            {
+                                if (!xmlDict.ContainsKey(key))
+                                    xmlDict.Add(key, dict[key]);
+                            }
+                        }
+                    }
+                }
+            }
+            //then go through all mods of the default language
+            foreach (ModHeader mod in PathMod.FallbackMods(basePath))
+            {
+                string modulePath = PathMod.HardMod(mod.Path, Path.Join(basePath, mod.Namespace, packagefilepath, STRINGS_FILE_NAME + ".resx"));
+                if (File.Exists(modulePath))
+                {
+                    Dictionary<string, string> dict = LoadStringResx(modulePath);
+                    foreach (string key in dict.Keys)
+                    {
+                        if (!xmlDict.ContainsKey(key))
+                            xmlDict.Add(key, dict[key]);
+                    }
+                }
+            }
+            return xmlDict;
+        }
+
+        public static Dictionary<string, Dictionary<string, (string val, string comment)>> LoadDevStringDict(string basePath, string packagefilepath, bool excludeEdit)
+        {
+            Dictionary<string, Dictionary<string, (string val, string comment)>> rawStrings = new Dictionary<string, Dictionary<string, (string, string)>>();
+            foreach (string code in Text.SupportedLangs)
+            {
+                //go through all mods of the original language
+                foreach (ModHeader mod in PathMod.FallbackMods(basePath))
+                {
+                    if (excludeEdit && mod.Namespace == PathMod.GetCurrentNamespace())
+                        continue;
+
+                    string modulePath = PathMod.HardMod(mod.Path, Path.Join(basePath, mod.Namespace, packagefilepath, STRINGS_FILE_NAME + (code == "en" ? "" : ("." + code)) + ".resx"));
+                    if (File.Exists(modulePath))
+                    {
+                        Dictionary<string, (string, string)> xmlDict = LoadDevStringResx(modulePath);
+                        foreach (string name in xmlDict.Keys)
+                        {
+                            if (!rawStrings.ContainsKey(name))
+                                rawStrings.Add(name, new Dictionary<string, (string val, string comment)>());
+
+                            if (!rawStrings[name].ContainsKey(code))
+                                rawStrings[name].Add(code, xmlDict[name]);
+                        }
+                    }
+                }
+            }
+            return rawStrings;
         }
 
         public static void SaveStringResx(string path, Dictionary<string, (string val, string comment)> stringDict)
@@ -622,7 +712,7 @@ namespace RogueEssence
             strings.Clear();
             //order of string fallbacks:
             //first go through all mods of the original language
-            foreach (string path in PathMod.FallbackPaths("Strings/" + fileName + "." + code + ".resx"))
+            foreach (string path in PathMod.FallbackPaths("Strings/" + fileName + "." + code + STRINGS_FILE_EXT))
             {
                 Dictionary<string, string> dict = LoadStringResx(path);
                 foreach (string key in dict.Keys)
@@ -637,7 +727,7 @@ namespace RogueEssence
             {
                 foreach (string fallback in LangNames[code].Fallbacks)
                 {
-                    foreach (string path in PathMod.FallbackPaths("Strings/" + fileName + "." + fallback + ".resx"))
+                    foreach (string path in PathMod.FallbackPaths("Strings/" + fileName + "." + fallback + STRINGS_FILE_EXT))
                     {
                         Dictionary<string, string> dict = LoadStringResx(path);
                         foreach (string key in dict.Keys)
@@ -649,7 +739,7 @@ namespace RogueEssence
                 }
             }
             //then go through all mods of the default language
-            foreach (string path in PathMod.FallbackPaths("Strings/" + fileName + ".resx"))
+            foreach (string path in PathMod.FallbackPaths("Strings/" + fileName + STRINGS_FILE_EXT))
             {
                 Dictionary<string, string> dict = LoadStringResx(path);
                 foreach (string key in dict.Keys)
