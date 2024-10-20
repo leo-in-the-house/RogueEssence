@@ -95,6 +95,21 @@ namespace RogueEssence.Data
             Verifying
         }
 
+        public enum SavePolicy
+        {
+            FileDiff,
+            File,
+            Diff
+        }
+
+        public enum ModStatus
+        {
+            Base,
+            Added,
+            Modded,
+            DiffModded
+        }
+
         private static DataManager instance;
         public static void InitInstance()
         {
@@ -221,6 +236,43 @@ namespace RogueEssence.Data
         /// </summary>
         public string DefaultSkin;
 
+        public string GetDefaultData(DataManager.DataType dataType)
+        {
+            switch (dataType)
+            {
+                case DataType.Monster:
+                    return DefaultMonster;
+                case DataType.Skill:
+                    return DefaultSkill;
+                case DataType.Intrinsic:
+                    return DefaultIntrinsic;
+                case DataType.MapStatus:
+                    return DefaultMapStatus;
+                case DataType.Element:
+                    return DefaultElement;
+                case DataType.Tile:
+                    return DefaultTile;
+                case DataType.Zone:
+                    return DefaultZone;
+                case DataType.Rank:
+                    return DefaultRank;
+                case DataType.AI:
+                    return DefaultAI;
+                case DataType.Skin:
+                    return DefaultSkin;
+            }
+
+            //Item
+            //Status
+            //Terrain
+            //Emote
+            //AutoTile
+            //GrowthGroup
+            //SkillGroup
+
+            return "";
+        }
+
         /// <summary>
         /// The terrain ID considered to be universally "floor" in random dungeon generation
         /// </summary>
@@ -275,22 +327,22 @@ namespace RogueEssence.Data
         {
             if (!Directory.Exists(PathMod.ModSavePath(SAVE_PATH)))
                 Directory.CreateDirectory(PathMod.ModSavePath(SAVE_PATH));
-            if (!Directory.Exists(PathMod.NoMod(ROGUE_PATH)))
-                Directory.CreateDirectory(PathMod.NoMod(ROGUE_PATH));
+            if (!Directory.Exists(PathMod.ModSavePath(ROGUE_PATH)))
+                Directory.CreateDirectory(PathMod.ModSavePath(ROGUE_PATH));
             if (!Directory.Exists(PathMod.ModSavePath(REPLAY_PATH)))
                 Directory.CreateDirectory(PathMod.ModSavePath(REPLAY_PATH));
 
-            if (!Directory.Exists(PathMod.NoMod(RESCUE_IN_PATH + SOS_FOLDER)))
-                Directory.CreateDirectory(PathMod.NoMod(RESCUE_IN_PATH + SOS_FOLDER));
+            if (!Directory.Exists(PathMod.FromApp(RESCUE_IN_PATH + SOS_FOLDER)))
+                Directory.CreateDirectory(PathMod.FromApp(RESCUE_IN_PATH + SOS_FOLDER));
 
-            if (!Directory.Exists(PathMod.NoMod(RESCUE_IN_PATH + AOK_FOLDER)))
-                Directory.CreateDirectory(PathMod.NoMod(RESCUE_IN_PATH + AOK_FOLDER));
+            if (!Directory.Exists(PathMod.FromApp(RESCUE_IN_PATH + AOK_FOLDER)))
+                Directory.CreateDirectory(PathMod.FromApp(RESCUE_IN_PATH + AOK_FOLDER));
 
-            if (!Directory.Exists(PathMod.NoMod(RESCUE_OUT_PATH + SOS_FOLDER)))
-                Directory.CreateDirectory(PathMod.NoMod(RESCUE_OUT_PATH + SOS_FOLDER));
+            if (!Directory.Exists(PathMod.FromApp(RESCUE_OUT_PATH + SOS_FOLDER)))
+                Directory.CreateDirectory(PathMod.FromApp(RESCUE_OUT_PATH + SOS_FOLDER));
 
-            if (!Directory.Exists(PathMod.NoMod(RESCUE_OUT_PATH + AOK_FOLDER)))
-                Directory.CreateDirectory(PathMod.NoMod(RESCUE_OUT_PATH + AOK_FOLDER));
+            if (!Directory.Exists(PathMod.FromApp(RESCUE_OUT_PATH + AOK_FOLDER)))
+                Directory.CreateDirectory(PathMod.FromApp(RESCUE_OUT_PATH + AOK_FOLDER));
 
 
             MsgLog = new List<string>();
@@ -332,8 +384,6 @@ namespace RogueEssence.Data
             JumpFX = LoadData<BattleFX>(FX_PATH, "Jump", DATA_EXT);
             ThrowFX = LoadData<BattleFX>(FX_PATH, "Throw", DATA_EXT);
 
-
-            Version oldVersion = DevHelper.GetVersion(PathMod.ModPath(DATA_PATH + "Universal" + DATA_EXT));
             UniversalEvent = LoadData<UniversalBaseEffect>(DATA_PATH, "Universal", DATA_EXT);
 
             UniversalData = LoadData<TypeDict<BaseData>>(MISC_PATH, "Index", DATA_EXT);
@@ -704,6 +754,27 @@ namespace RogueEssence.Data
             }
         }
 
+        public void ContentResaved(DataType dataType, string entryNum, IEntryData data, bool asDiff)
+        {
+            SaveEntryData(entryNum, dataType.ToString(), data, asDiff ? SavePolicy.Diff : SavePolicy.File);
+
+            ModStatus modStatus = GetEntryDataModStatus(entryNum, dataType.ToString());
+            if (modStatus != ModStatus.Base)
+            {
+                EntrySummary entrySummary = data.GenerateEntrySummary();
+                DataIndices[dataType].Set(PathMod.Quest.UUID, entryNum, entrySummary);
+            }
+            else
+                DataIndices[dataType].Remove(PathMod.Quest.UUID, entryNum);
+            SaveIndex(dataType);
+
+            //Don't need to clear cache
+
+            //don't need to save universal indices
+
+            //don't need to reload editor data
+        }
+
         public void ContentChanged(DataType dataType, string entryNum, IEntryData data)
         {
             if (data != null)
@@ -759,6 +830,16 @@ namespace RogueEssence.Data
             return LoadData<T>(DATA_PATH + subPath, indexNum, ext);
         }
 
+        /// <summary>
+        /// Loads the data of the specified mod, and does not fall back to base if there is no mod.
+        /// Used for reserializing/resaving where either the base or the mod's files ONLY need to be resaved.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="mod"></param>
+        /// <param name="subpath"></param>
+        /// <param name="file"></param>
+        /// <param name="ext"></param>
+        /// <returns></returns>
         public static T LoadModData<T>(ModHeader mod, string subpath, string file, string ext)
         {
             string fullPath = PathMod.HardMod(mod.Path, Path.Join(subpath, file + ext));
@@ -845,45 +926,109 @@ namespace RogueEssence.Data
         }
 
 
-        public static void SaveEntryData(string indexNum, string subPath, IEntryData entry)
+        public static ModStatus GetEntryDataModStatus(string indexNum, string subPath)
         {
-            SaveData(entry, Path.Join(DATA_PATH, subPath), indexNum, DATA_EXT);
+            return GetDataModStatus(Path.Join(DATA_PATH, subPath), indexNum, DATA_EXT);
         }
 
+        /// <summary>
+        /// Returns information of how a file has been modded, if at all.
+        /// </summary>
+        /// <param name="subpath"></param>
+        /// <param name="file"></param>
+        /// <param name="ext"></param>
+        /// <returns></returns>
+        public static ModStatus GetDataModStatus(string subpath, string file, string ext)
+        {
+            string folder = PathMod.HardMod(subpath);
+            if (File.Exists(Path.Join(folder, file + ext)))
+            {
+                string baseFolder = PathMod.NoMod(subpath);
+                if (!File.Exists(Path.Join(baseFolder, file + ext)))
+                    return ModStatus.Added;
+                else
+                    return ModStatus.Modded;
+            }
+            if (File.Exists(Path.Join(folder, file + PATCH_EXT)))
+                return ModStatus.DiffModded;
+            return ModStatus.Base;
+        }
 
-        public static void SaveData(object entry, string subpath, string file, string ext)
+        public static void SaveEntryData(string indexNum, string subPath, IEntryData entry, SavePolicy savePolicy = SavePolicy.FileDiff)
+        {
+            SaveData(entry, Path.Join(DATA_PATH, subPath), indexNum, DATA_EXT, savePolicy);
+        }
+
+        /// <summary>
+        /// Provides the ability to save it as a file or a mod based on whether it was loaded as a diff or not... aka whether it was a diff as a file or not.
+        /// Can also save explicitly as a file or diff.
+        /// </summary>
+        /// <param name="entry"></param>
+        /// <param name="subpath"></param>
+        /// <param name="file"></param>
+        /// <param name="ext"></param>
+        /// <param name="savePolicy"></param>
+        public static void SaveData(object entry, string subpath, string file, string ext, SavePolicy savePolicy = SavePolicy.FileDiff)
         {
             string folder = PathMod.HardMod(subpath);
             if (!Directory.Exists(folder))
                 Directory.CreateDirectory(folder);
 
             //Check if a diff file is located here
-            if (File.Exists(Path.Join(folder, file + PATCH_EXT))) //if so, call SaveObject with the diff ext, and the additional argument consisting of the base item
-                SaveObject(entry, Path.Join(folder, file + PATCH_EXT), PathMod.NoMod(Path.Join(subpath, file, ext)));
-            else //if not, just save as normal
-                SaveObject(entry, Path.Join(folder, file + ext));
-        }
+            bool saveAsDiff;
+            switch (savePolicy)
+            {
+                case SavePolicy.File:
+                    saveAsDiff = false;
+                    break;
+                case SavePolicy.Diff:
+                    saveAsDiff = true;
+                    break;
+                default:
+                    saveAsDiff = File.Exists(Path.Join(folder, file + PATCH_EXT));
+                    break;
+            }
 
-        //we need the ability to save it as a file or a mod based on whether it was loaded as a diff or not... aka whether it was a diff as a file or not
-        //also need capability to save explicitly as a diff, or explicitly as a file
+            string saveDest = Path.Join(folder, file + ext);
+            string baseFile = PathMod.NoMod(Path.Join(subpath, file + ext));
+            if (saveAsDiff && saveDest != baseFile && File.Exists(baseFile)) //if so, call SaveObject with the diff ext, and the additional argument consisting of the base item
+                SaveObject(entry, saveDest, baseFile);
+            else //if not, just save as normal
+                SaveObject(entry, saveDest);
+        }
 
         /// <summary>
         /// 
         /// </summary>
         /// <param name="entry"></param>
-        /// <param name="path"></param>
-        /// <param name="diffpath">The base file to diff the json against.  Do not save as a patch if left blank.</param>
-        public static void SaveObject(object entry, string path, string diffpath = "")
+        /// <param name="path">The location to save the file if not as a patch.</param>
+        /// <param name="basePath">The base file to diff the json against.  Do not save as a patch if left blank.</param>
+        public static void SaveObject(object entry, string path, string basePath = "")
         {
-            if (diffpath == "")
+            //The location of a hypothetical patch file.
+            //if basePath is not empty, save as the patch file.  if basePath is empty, save as a full file
+            string directory = Path.GetDirectoryName(path);
+            string file = Path.GetFileNameWithoutExtension(path);
+            string diffPath = Path.Join(directory, file + PATCH_EXT);
+            if (basePath == "")
             {
                 using (Stream stream = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.None))
                 {
                     Serializer.SerializeData(stream, entry);
                 }
+
+                //Delete the diff file, if it exists
+                if (File.Exists(diffPath))
+                    File.Delete(diffPath);
             }
             else
-                Serializer.SerializeDataAsDiff(path, diffpath, entry);
+            {
+                Serializer.SerializeDataAsDiff(diffPath, basePath, entry);
+
+                //Delete the non-diff file, if it exists
+                if (File.Exists(path))
+                    File.Delete(path);
+            }
         }
 
         public static void DeleteEntryData(string indexNum, string subPath)
@@ -900,7 +1045,7 @@ namespace RogueEssence.Data
             //Check if a diff file is located here
             if (File.Exists(Path.Join(folder, file + PATCH_EXT))) //if so, call DeleteObject with the diff ext, and the additional argument consisting of the base item
                 DeleteObject(Path.Join(folder, file + PATCH_EXT));
-            else //if not, just save as normal
+            else //if not, just delete the normal mod file
                 DeleteObject(Path.Join(folder, file + ext));
         }
 
@@ -2130,8 +2275,10 @@ namespace RogueEssence.Data
                                 int build = reader.ReadInt32();
                                 int rev = reader.ReadInt32();
                                 Version version;
-                                if (build > -1)
+                                if (rev > -1)
                                     version = new Version(major, minor, build, rev);
+                                else if (build > -1)
+                                    version = new Version(major, minor, build);
                                 else
                                     version = new Version(major, minor);
                                 ModVersion diff = new ModVersion(name, uuid, version);

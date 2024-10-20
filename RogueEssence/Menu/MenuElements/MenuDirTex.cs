@@ -2,11 +2,10 @@
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using RogueEssence.Content;
-using RogueEssence.Dungeon;
 
 namespace RogueEssence.Menu
 {
-    public class MenuDirTex : IMenuElement
+    public class MenuDirTex : BaseMenuElement
     {
         public enum TexType
         {
@@ -21,14 +20,16 @@ namespace RogueEssence.Menu
         public TexType Type;
         public AnimData Anim;
 
-        public MenuDirTex(Loc loc, TexType type, AnimData texture)
+        public MenuDirTex(Loc loc, TexType type, AnimData texture) : this("", loc, type, texture) { }
+        public MenuDirTex(string label, Loc loc, TexType type, AnimData texture)
         {
+            Label = label;
             Loc = loc;
             Type = type;
             Anim = texture;
         }
 
-        public void Draw(SpriteBatch spriteBatch, Loc offset)
+        public override void Draw(SpriteBatch spriteBatch, Loc offset)
         {
             DirSheet sheet = null;
             switch (Type)

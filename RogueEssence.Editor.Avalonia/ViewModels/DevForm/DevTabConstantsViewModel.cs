@@ -8,6 +8,7 @@ using RogueEssence.Data;
 using RogueEssence.Dungeon;
 using RogueEssence.Menu;
 using RogueEssence.Script;
+using RogueEssence.Dev.Views;
 
 namespace RogueEssence.Dev.ViewModels
 {
@@ -27,6 +28,36 @@ namespace RogueEssence.Dev.ViewModels
                 DataManager.Instance.UniversalEvent = obj;
                 DataManager.SaveData(obj, DataManager.DATA_PATH, "Universal", DataManager.DATA_EXT);
             });
+        }
+        public async void mnuUniversalFile_Click()
+        {
+            DevForm parent = (DevForm)DiagManager.Instance.DevEditor;
+            if (DataManager.GetDataModStatus(DataManager.DATA_PATH, "Universal", DataManager.DATA_EXT) == DataManager.ModStatus.Base)
+            {
+                await MessageBox.Show(parent, "Universal data must have saved edits first!", "Error", MessageBox.MessageBoxButtons.Ok);
+                return;
+            }
+
+            DataManager.SaveData(DataManager.Instance.UniversalEvent, DataManager.DATA_PATH, "Universal", DataManager.DATA_EXT, DataManager.SavePolicy.File);
+
+            await MessageBox.Show(parent, "Universal is now saved as a file.", "Complete", MessageBox.MessageBoxButtons.Ok);
+        }
+        public async void mnuUniversalDiff_Click()
+        {
+            DevForm parent = (DevForm)DiagManager.Instance.DevEditor;
+            if (DataManager.GetDataModStatus(DataManager.DATA_PATH, "Universal", DataManager.DATA_EXT) == DataManager.ModStatus.Base)
+            {
+                await MessageBox.Show(parent, "Universal data must have saved edits first!", "Error", MessageBox.MessageBoxButtons.Ok);
+                return;
+            }
+
+            //you can't make a diff for the base game!
+            DataManager.SaveData(DataManager.Instance.UniversalEvent, DataManager.DATA_PATH, "Universal", DataManager.DATA_EXT, DataManager.SavePolicy.Diff);
+
+            if (DataManager.GetDataModStatus(DataManager.DATA_PATH, "Universal", DataManager.DATA_EXT) == DataManager.ModStatus.Base)
+                await MessageBox.Show(parent, "Modded Universal was identical to base. Unneeded patch removed.", "Complete", MessageBox.MessageBoxButtons.Ok);
+            else
+                await MessageBox.Show(parent, "Universal is now saved as a patch.", "Complete", MessageBox.MessageBoxButtons.Ok);
         }
 
         public void btnEditStrings_Click()

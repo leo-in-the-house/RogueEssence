@@ -291,6 +291,7 @@ namespace RogueEssence.Script
             Update,
             SaveData,
             LoadSavedData,
+            AddMenu,
 
             MusicChange,
             GroundEntityInteract,
@@ -604,7 +605,7 @@ namespace RogueEssence.Script
                 LuaState.State.Encoding = Encoding.UTF8;
         }
 
-        private string GetModulePath(string scriptPath, string moduleName)
+        public static string GetModulePath(string scriptPath, string moduleName)
         {
             //check if the ?.lua or ?/init.lua exists
             if (File.Exists(Path.Join(scriptPath, moduleName + ".lua")))
@@ -616,7 +617,7 @@ namespace RogueEssence.Script
 
         private void ModRequireFile(string moduleName)
         {
-            foreach (ModHeader mod in PathMod.FallforthMods(SCRIPT_PATH))
+            foreach (ModHeader mod in PathMod.FallforthScriptMods(SCRIPT_PATH))
             {
                 string modulePath = GetModulePath(PathMod.HardMod(mod.Path, SCRIPT_PATH), Path.Join(mod.Namespace, moduleName));
                 if (modulePath != null)
@@ -629,7 +630,7 @@ namespace RogueEssence.Script
 
         private void ModDoFile(string moduleName)
         {
-            foreach (ModHeader mod in PathMod.FallforthMods(SCRIPT_PATH))
+            foreach (ModHeader mod in PathMod.FallforthScriptMods(SCRIPT_PATH))
             {
                 string modulePath = GetModulePath(PathMod.HardMod(mod.Path, SCRIPT_PATH), Path.Join(mod.Namespace, moduleName));
                 if (modulePath != null)
@@ -665,7 +666,7 @@ namespace RogueEssence.Script
             end
             return mergeTables").First() as LuaFunction;
             //we need to switch path using fallforth, then load each, then combine them into one table, then return
-            foreach (ModHeader mod in PathMod.FallforthMods(SCRIPT_PATH))
+            foreach (ModHeader mod in PathMod.FallforthScriptMods(SCRIPT_PATH))
             {
                 string modulePath = GetModulePath(PathMod.HardMod(mod.Path, SCRIPT_PATH), Path.Join(mod.Namespace, loadPath));
                 if (modulePath != null)
@@ -1368,6 +1369,12 @@ namespace RogueEssence.Script
             }
         }
 
+        public void LoadGroundMapStrings(string mapassetname)
+        {
+            string relpath = string.Format(MAP_SCRIPT_PATTERN, mapassetname).Replace('.', '/');
+            m_scriptstr.LoadPackageStringTable(relpath);
+        }
+
         /// <summary>
         /// Use this to clean up the traces left behind by a map package.
         /// Also collects garbages.
@@ -1434,12 +1441,6 @@ namespace RogueEssence.Script
                         "-- Package name\n" +
                         "local {1} = {{}}\n\n" +
 
-                        "-- Local, localized strings table\n" +
-                        "-- Use this to display the named strings you added in the strings files for the map!\n" +
-                        "-- Ex:\n" +
-                        "--      local localizedstring = MapStrings['SomeStringName']\n" +
-                        "local MapStrings = {{}}\n\n" +
-
                         "-------------------------------\n" +
                         "-- Map Callbacks\n" +
                         "-------------------------------",
@@ -1452,11 +1453,7 @@ namespace RogueEssence.Script
                             fstream.WriteLine("---{0}\n--Engine callback function\nfunction {0}\n", callbackname);
                             if (fn == EMapCallbacks.Init)
                             {
-                                //Add the map string loader
-                                fstream.WriteLine(
-                                "  --This will fill the localized strings table automatically based on the locale the game is \n" +
-                                "  -- currently in. You can use the MapStrings table after this line!\n" +
-                                "  MapStrings = COMMON.AutoLoadLocalizedStrings()");
+
                             }
                             else if (fn == EMapCallbacks.Enter || fn == EMapCallbacks.GameLoad)
                             {
@@ -1928,6 +1925,20 @@ namespace RogueEssence.Script
         {
             DiagManager.Instance.LogInfo("LuaEngine.OnMenuButtonPressed()...");
             yield return CoroutineManager.Instance.StartCoroutine(m_scrsvc.PublishCoroutine(EServiceEvents.MenuButtonPressed.ToString()));
+        }
+
+        /// <summary>
+        /// Called when a menu is about to be added to the menu stack!
+        /// </summary>
+        public void OnAddMenu(IInteractable menu)
+        {
+            if (menu is InteractableMenu interactable && ((ILabeled)interactable).HasLabel())
+            {
+                DiagManager.Instance.LogInfo("Opening labeled menu...");
+                string type = interactable is MultiPageMenu ? "MultiPageMenu" : interactable is ChoiceMenu ? "ChoiceMenu" : "InteractableMenu";
+                DiagManager.Instance.LogInfo($"Menu Type: {type}. Label: {interactable.Label}");
+            }
+            m_scrsvc.Publish(EServiceEvents.AddMenu.ToString(), menu);
         }
 
         public void OnNewGame()

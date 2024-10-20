@@ -9,13 +9,16 @@ using RogueEssence.Ground;
 
 namespace RogueEssence.Menu
 {
+    //This menu is unused since 0.8.4
     public class SettingsMenu : BaseSettingsMenu
     {
         //needs a summary menu?
         bool inGame;
-        
-        public SettingsMenu()
+
+        public SettingsMenu() : this(MenuLabel.SETTINGS_MENU) { }
+        public SettingsMenu(string label)
         {
+            Label = label;
             this.inGame = false;
             if (GameManager.Instance.CurrentScene == GroundScene.Instance)
                 this.inGame = true;

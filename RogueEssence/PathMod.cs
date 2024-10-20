@@ -23,12 +23,24 @@ namespace RogueEssence
         public static string ExePath { get; private set; }
         public static string ASSET_PATH;
         public static string DEV_PATH;
+        public static string APP_PATH;
         public static string RESOURCE_PATH { get => ASSET_PATH + "Editor/"; }
+        public static string BASE_PATH { get => ASSET_PATH + "Base/"; }
 
-        public static string MODS_PATH { get => ExePath + MODS_FOLDER; }
+        public static string MODS_PATH { get => APP_PATH + MODS_FOLDER; }
         public static string MODS_FOLDER = "MODS/";
 
+        public const string PATH_PARAMS_FILE = "PathParams.xml";
+
+        /// <summary>
+        /// The namespace for the base game, relative to mods
+        /// </summary>
         public static string BaseNamespace { get; private set; }
+
+        /// <summary>
+        /// Additional namespaces of the base game, purely for use in scripting
+        /// </summary>
+        public static List<string> BaseScriptNamespaces { get; private set; }
 
         /// <summary>
         /// Filename of mod relative to executable
@@ -43,19 +55,79 @@ namespace RogueEssence
 
         private static Dictionary<Guid, ModHeader> uuidLookup;
 
-        public static void InitPathMod(string path, string baseNamespace)
+        public static void InitPathMod(string path)
         {
             ExeName = Path.GetFileName(path);
             ExePath = Path.GetDirectoryName(path) + "/";
+
+            //Asset path can be changed after initialization
             ASSET_PATH = ExePath;
+            //Dev path can be changed after initialization
             DEV_PATH = ExePath + "RawAsset/";
-            BaseNamespace = baseNamespace;
+            //App path can be changed after initialization
+            APP_PATH = ExePath;
+
+            BaseNamespace = "";
+            BaseScriptNamespaces = new List<string>();
 
             Quest = ModHeader.Invalid;
             Mods = new ModHeader[0];
             LoadOrder = new List<int>();
             namespaceLookup = new Dictionary<string, ModHeader>();
             uuidLookup = new Dictionary<Guid, ModHeader>();
+        }
+
+        public static void InitNamespaces()
+        {
+            string path = Path.Join(PathMod.BASE_PATH, PATH_PARAMS_FILE);
+
+            //try to load from file
+            try
+            {
+                XmlDocument xmldoc = new XmlDocument();
+                xmldoc.Load(path);
+
+                XmlNode namespaceNode = xmldoc.DocumentElement.SelectSingleNode("BaseNamespace");
+                BaseNamespace = namespaceNode.InnerText;
+
+                {
+                    BaseScriptNamespaces = new List<string>();
+                    XmlNode scriptNamespaces = xmldoc.DocumentElement.SelectSingleNode("BaseScriptNamespaces");
+                    foreach (XmlNode scriptNode in scriptNamespaces.SelectNodes("ScriptNamespace"))
+                        BaseScriptNamespaces.Add(scriptNode.InnerText);
+                }
+            }
+            catch (Exception ex)
+            {
+                DiagManager.Instance.LogError(ex, false);
+                throw;
+            }
+        }
+
+        public static void SaveNamespaces(string destPath, string baseNameSpace, List<string> baseScriptNamespaces)
+        {
+            string path = Path.Join(destPath, PATH_PARAMS_FILE);
+            try
+            {
+                XmlDocument xmldoc = new XmlDocument();
+
+                XmlNode docNode = xmldoc.CreateElement("root");
+                xmldoc.AppendChild(docNode);
+
+                docNode.AppendInnerTextChild(xmldoc, "BaseNamespace", baseNameSpace);
+
+                XmlNode scriptNamespaceNode = xmldoc.CreateElement("BaseScriptNamespaces");
+                docNode.AppendChild(scriptNamespaceNode);
+
+                foreach (string scriptNamespace in baseScriptNamespaces)
+                    scriptNamespaceNode.AppendInnerTextChild(xmldoc, "ScriptNamespace", scriptNamespace);
+
+                xmldoc.Save(path);
+            }
+            catch (Exception ex)
+            {
+                DiagManager.Instance.LogError(ex);
+            }
         }
 
         public static void SetMods(ModHeader quest, ModHeader[] mods, List<int> loadOrder)
@@ -105,13 +177,13 @@ namespace RogueEssence
         }
 
         /// <summary>
-        /// Takes a full path and returns a new path that is relative to the executable folder.
+        /// Takes a full path and returns a new path that is relative to the relativeFrom folder.
         /// </summary>
         /// <param name="path"></param>
         /// <returns></returns>
-        public static string GetRelativePath(string path)
+        public static string GetRelativePath(string relativeFrom, string path)
         {
-            List<string> exeSplit = Split(ExePath);
+            List<string> exeSplit = Split(relativeFrom);
             List<string> split = Split(path);
 
             List<string> result = new List<string>();
@@ -158,12 +230,12 @@ namespace RogueEssence
 
         public static string ModSavePath(string baseFolder)
         {
-            return Path.Join(ExePath, baseFolder, Quest.Path);
+            return Path.Join(APP_PATH, baseFolder, Quest.Path);
         }
 
         public static string ModSavePath(string baseFolder, string basePath)
         {
-            return Path.Join(ExePath, baseFolder, Quest.Path, basePath);
+            return Path.Join(APP_PATH, baseFolder, Quest.Path, basePath);
         }
 
         public static string HardMod(string basePath)
@@ -174,26 +246,58 @@ namespace RogueEssence
         {
             return Path.Join(ASSET_PATH, basePath);
         }
-        public static string FromExe(string basePath)
+        public static string FromApp(string basePath)
         {
-            return Path.Join(ExePath, basePath);
+            return Path.Join(APP_PATH, basePath);
         }
         public static string HardMod(string mod, string basePath)
         {
             if (mod == "")
                 return Path.Join(ASSET_PATH, basePath);
             else
-                return Path.Join(ExePath, mod, basePath);
+                return Path.Join(APP_PATH, mod, basePath);
         }
 
-        public static IEnumerable<ModHeader> FallforthMods(string basePath)
+
+        /// <summary>
+        /// Scripts are the ONLY place that use the additional script namespaces, so a special iterator must be used for them.
+        /// </summary>
+        public static IEnumerable<ModHeader> FallforthScriptMods(string basePath)
         {
             Stack<ModHeader> mods = new Stack<ModHeader>();
-            foreach (ModHeader mod in FallbackMods(basePath))
+            foreach (ModHeader mod in FallbackScriptMods(basePath))
                 mods.Push(mod);
 
             while (mods.Count > 0)
                 yield return mods.Pop();
+        }
+
+        /// <summary>
+        /// Scripts are the ONLY place that use the additional script namespaces, so a special iterator must be used for them.
+        /// </summary>
+        public static IEnumerable<ModHeader> FallbackScriptMods(string basePath)
+        {
+            for (int ii = LoadOrder.Count - 1; ii >= 0; ii--)
+            {
+                ModHeader mod = getModHeader(Quest, Mods, LoadOrder[ii]);
+                string fullPath = HardMod(mod.Path, basePath);
+                if (File.Exists(fullPath) || Directory.Exists(fullPath))
+                    yield return mod;
+            }
+
+
+            for (int ii = BaseScriptNamespaces.Count - 1; ii >= 0; ii--)
+            {
+                ModHeader header = ModHeader.Invalid;
+                header.Namespace = BaseScriptNamespaces[ii];
+                yield return header;
+            }
+
+            {
+                ModHeader header = ModHeader.Invalid;
+                header.Namespace = BaseNamespace;
+                yield return header;
+            }
         }
 
         public static IEnumerable<ModHeader> FallbackMods(string basePath)

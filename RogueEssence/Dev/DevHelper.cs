@@ -5,15 +5,17 @@ using System.Runtime.Serialization;
 using System.Runtime.Serialization.Formatters.Binary;
 using System.Collections.Generic;
 using System.Xml.Serialization;
+using System.Text.RegularExpressions;
 using RogueEssence.Content;
 using System.Text;
 using RogueEssence.Script;
+using System.Linq;
 
 namespace RogueEssence.Dev
 {
     public static class DevHelper
     {
-        //TODO: this is old conversion code and needs to be deleted, but maybe the code could be salvaged for somemass rename operation?
+        //TODO: this is old conversion code and needs to be deleted, but maybe the code could be salvaged for some mass rename operation?
         public static Version StringAssetVersion = new Version(0, 6, 0);
 
         public static Version GetVersion(params string[] dirs)
@@ -237,7 +239,7 @@ namespace RogueEssence.Dev
             //load mod xml and resave it
             if (PathMod.Quest.IsValid())
             {
-                string modPath = PathMod.FromExe(PathMod.Quest.Path);
+                string modPath = PathMod.FromApp(PathMod.Quest.Path);
                 PathMod.SaveModDetails(modPath, PathMod.Quest);
             }
 
@@ -390,6 +392,20 @@ namespace RogueEssence.Dev
             return String.Join(' ', words);
         }
 
+        public static void ResaveBase(bool useDiff)
+        {
+            //All instances of LoadObject in DevHelper need to be reworked to load on both diff and base file?
+            //yes, this is so that they can load properly on the reserialization step
+            {
+                ActiveEffect data = DataManager.LoadModData<ActiveEffect>(PathMod.Quest, DataManager.DATA_PATH, "Universal", DataManager.DATA_EXT);
+
+                //save it as a file or a mod based on whether it was loaded as a diff or not... aka whether it was a diff as a file or not
+                //SaveData will do this automatically!
+                if (data != null)
+                    DataManager.SaveData(data, DataManager.DATA_PATH, "Universal", DataManager.DATA_EXT, useDiff ? DataManager.SavePolicy.Diff : DataManager.SavePolicy.File);
+            }
+        }
+
         public static void ReserializeBase()
         {
             //All instances of LoadObject in DevHelper need to be reworked to load on both diff and base file?
@@ -429,6 +445,34 @@ namespace RogueEssence.Dev
                 DataManager.SaveObject(data, dir);
             }
         }
+
+        public static void Resave(DataManager.DataType conversionFlags, bool useDiff)
+        {
+            foreach (DataManager.DataType type in Enum.GetValues(typeof(DataManager.DataType)))
+            {
+                if (type != DataManager.DataType.All && (conversionFlags & type) != DataManager.DataType.None)
+                    ResaveData<IEntryData>(DataManager.DATA_PATH + type.ToString() + "/", DataManager.DATA_EXT, useDiff);
+            }
+        }
+
+        public static void ResaveData<T>(string dataPath, string ext, bool useDiff)
+        {
+            // search for data EXT as well as diff EXT...
+            // This means searching for all files first
+            foreach (string dir in PathMod.GetHardModFiles(dataPath, "*"))
+            {
+                string fileName = Path.GetFileNameWithoutExtension(dir);
+                string testExt = Path.GetExtension(dir);
+                //then filtering just the data/patch ext
+                if (testExt == ext || testExt == DataManager.PATCH_EXT)
+                {
+                    T data = DataManager.LoadModData<T>(PathMod.Quest, dataPath, fileName, ext);
+                    if (data != null)
+                        DataManager.SaveData(data, dataPath, fileName, ext, useDiff ? DataManager.SavePolicy.Diff : DataManager.SavePolicy.File);
+                }
+            }
+        }
+
 
         public static void Reserialize(DataManager.DataType conversionFlags)
         {
@@ -485,16 +529,22 @@ namespace RogueEssence.Dev
         }
 
 
+
         public static void IndexNamedData(string dataPath)
         {
             try
             {
                 Dictionary<string, EntrySummary> entries = new Dictionary<string, EntrySummary>();
-                foreach (string dir in Directory.GetFiles(PathMod.HardMod(dataPath), "*" + DataManager.DATA_EXT))
+                foreach (string dir in Directory.GetFiles(PathMod.HardMod(dataPath), "*"))
                 {
-                    string file = Path.GetFileNameWithoutExtension(dir);
-                    IEntryData data = DataManager.LoadObject<IEntryData>(dir);
-                    entries[file] = data.GenerateEntrySummary();
+                    string fileName = Path.GetFileNameWithoutExtension(dir);
+                    string testExt = Path.GetExtension(dir);
+                    //then filtering just the data/patch ext
+                    if (testExt == DataManager.DATA_EXT || testExt == DataManager.PATCH_EXT)
+                    {
+                        IEntryData data = DataManager.LoadModData<IEntryData>(PathMod.Quest, dataPath, fileName, DataManager.DATA_EXT);
+                        entries[fileName] = data.GenerateEntrySummary();
+                    }
                 }
 
                 if (entries.Count > 0)
@@ -516,7 +566,7 @@ namespace RogueEssence.Dev
         {
             DiagManager.Instance.LogInfo(String.Format("Creating standalone from quest: {0}", String.Join(", ", quest)));
 
-            string outputPath = Path.Combine(PathMod.ExePath, "Build", quest);
+            string outputPath = Path.Combine(PathMod.ExePath, "BUILD", quest);
 
             if (Directory.Exists(outputPath))
                 Directory.Delete(outputPath, true);
@@ -530,11 +580,20 @@ namespace RogueEssence.Dev
                 File.Copy(Path.Combine(PathMod.ExePath, pngName), Path.Combine(outputPath, pngName));
 
             //Base - direct copy from game
-            copyRecursive(GraphicsManager.BASE_PATH, Path.Combine(outputPath, "Base"));
+            copyRecursive(PathMod.BASE_PATH, Path.Combine(outputPath, "Base"));
+            {
+                //Except for Path Params: the namespace of the mod must be added in script
+                List<string> newList = new List<string>();
+                newList.AddRange(PathMod.BaseScriptNamespaces);
+                if (!newList.Contains(PathMod.Quest.Namespace))
+                    newList.Add(PathMod.Quest.Namespace);
+                PathMod.SaveNamespaces(Path.Combine(outputPath, "Base"), PathMod.BaseNamespace, newList);
+            }
 
             //Strings - deep merge files
             Directory.CreateDirectory(outputPath);
             copyRecursive(PathMod.NoMod("Strings"), Path.Combine(outputPath, "Strings"));
+            //TODO: merge Languages.xml too?
             mergeStringXmlRecursive(PathMod.HardMod("Strings"), Path.Combine(outputPath, "Strings"));
 
             //Editor - direct copy from game
@@ -577,23 +636,90 @@ namespace RogueEssence.Dev
             }
 
             //Data - merge copy everything including script
-            //script will do fine with duplicate files being merged over, EXCEPT for strings files
-            //TODO: only copy what is indexed for characters and portraits
             Directory.CreateDirectory(Path.Combine(outputPath, DataManager.DATA_PATH));
 
-            //universal data, start params, etc.
-            foreach (string subPath in Directory.GetFiles(PathMod.NoMod(DataManager.DATA_PATH)))
             {
-                string path = Path.GetFileName(subPath);
-                File.Copy(subPath, Path.Combine(outputPath, DataManager.DATA_PATH, path));
+                //start params
+                File.Copy(Path.Combine(PathMod.NoMod(DataManager.DATA_PATH), "StartParams.xml"), Path.Combine(outputPath, DataManager.DATA_PATH, "StartParams.xml"));
+                if (File.Exists(Path.Combine(PathMod.HardMod(DataManager.DATA_PATH), "StartParams.xml")))
+                    File.Copy(Path.Combine(PathMod.HardMod(DataManager.DATA_PATH), "StartParams.xml"), Path.Combine(outputPath, DataManager.DATA_PATH, "StartParams.xml"), true);
             }
 
-            //actual data files
-            copyRecursive(PathMod.NoMod(DataManager.DATA_PATH), Path.Combine(outputPath, DataManager.DATA_PATH));
-            copyRecursive(PathMod.HardMod(DataManager.DATA_PATH), Path.Combine(outputPath, DataManager.DATA_PATH));
-            //TODO: merge strings files for ground map strings instead of overwrite
+            {
+                //merge the universal json
+                ActiveEffect data = DataManager.LoadData<ActiveEffect>(DataManager.DATA_PATH, "Universal", DataManager.DATA_EXT);
+                if (data != null)
+                    DataManager.SaveObject(data, Path.Combine(outputPath, DataManager.DATA_PATH, "Universal" + DataManager.DATA_EXT));
+            }
+
+            {
+                //merge the systemfx
+                Directory.CreateDirectory(Path.Combine(outputPath, DataManager.FX_PATH));
+                foreach (string dir in Directory.GetFiles(PathMod.NoMod(DataManager.FX_PATH)))
+                {
+                    string fileName = Path.GetFileNameWithoutExtension(dir);
+                    string ext = Path.GetExtension(dir);
+                    //then filtering just the data/patch ext
+                    if (ext == DataManager.DATA_EXT || ext == DataManager.PATCH_EXT)
+                    {
+                        object data;
+                        if (fileName == "NoCharge")
+                            data = DataManager.LoadData<EmoteFX>(DataManager.FX_PATH, fileName, DataManager.DATA_EXT);
+                        else
+                            data = DataManager.LoadData<BattleFX>(DataManager.FX_PATH, fileName, DataManager.DATA_EXT);
+                        DataManager.SaveObject(data, Path.Combine(outputPath, DataManager.FX_PATH, fileName + DataManager.DATA_EXT));
+                    }
+                }
+            }
+
+            {
+                //merge the main datatypes
+                foreach (DataManager.DataType type in Enum.GetValues(typeof(DataManager.DataType)))
+                {
+                    if (type == DataManager.DataType.All || type == DataManager.DataType.None)
+                        continue;
+
+                    //all files that were changed
+                    Directory.CreateDirectory(Path.Combine(outputPath, DataManager.DATA_PATH, type.ToString()));
+                    mergeEntryData(outputPath, type.ToString(), DataManager.DATA_EXT);
+                }
+            }
+
+            {
+                //merge map and ground
+                Directory.CreateDirectory(Path.Combine(outputPath, DataManager.MAP_PATH));
+                mergeEntryData(outputPath, DataManager.MAP_FOLDER, DataManager.MAP_EXT);
+                Directory.CreateDirectory(Path.Combine(outputPath, DataManager.GROUND_PATH));
+                mergeEntryData(outputPath, DataManager.GROUND_FOLDER, DataManager.GROUND_EXT);
+            }
+
+            {
+                //script will do fine with duplicate files being merged over
+                Directory.CreateDirectory(Path.Combine(outputPath, LuaEngine.SCRIPT_PATH));
+                copyRecursive(PathMod.NoMod(LuaEngine.SCRIPT_PATH), Path.Combine(outputPath, LuaEngine.SCRIPT_PATH));
+                copyRecursive(PathMod.HardMod(LuaEngine.SCRIPT_PATH), Path.Combine(outputPath, LuaEngine.SCRIPT_PATH));
+
+                //resx files will need to be smartly merged: merge them to the base namespace corresponding folder
+                //for all folders in the script path...
+                string groundDestSubFolder = Path.Join(outputPath, LuaEngine.SCRIPT_PATH, PathMod.BaseNamespace, "ground");
+                foreach (string dir in Directory.GetDirectories(Path.Combine(outputPath, LuaEngine.SCRIPT_PATH)))
+                {
+                    string dirName = new DirectoryInfo(dir).Name;
+                    if (dirName == "lib" || dirName == "bin")
+                        continue;
+                    if (dirName == PathMod.BaseNamespace)
+                        continue;
+                    //for all folders that are of the other namespaces
+                    //merge strings of all subfolders in the ground folder
+                    string groundSubFolder = Path.Join(dir, "ground");
+                    mergeStringXmlRecursive(groundSubFolder, groundDestSubFolder, true);
+                }
+                
+            }
+
 
             //save merged data indices
+            //TODO: just recompute them in the output folder?
             foreach (DataManager.DataType type in Enum.GetValues(typeof(DataManager.DataType)))
             {
                 if (type == DataManager.DataType.All || type == DataManager.DataType.None)
@@ -601,7 +727,7 @@ namespace RogueEssence.Dev
 
                 EntryDataIndex idx = DataManager.GetIndex(type);
                 using (Stream stream = new FileStream(Path.Combine(outputPath, DataManager.DATA_PATH + type.ToString() + "/" + "index.idx"), FileMode.Create, FileAccess.Write, FileShare.None))
-                    Serializer.SerializeData(stream, idx);
+                    Serializer.SerializeData(stream, idx.GetEntriesWithoutGuid());
             }
 
 
@@ -623,7 +749,7 @@ namespace RogueEssence.Dev
                 File.Copy(file, Path.Combine(destDir, Path.GetFileName(file)), true);
         }
 
-        private static void mergeStringXmlRecursive(string srcDir, string destDir)
+        private static void mergeStringXmlRecursive(string srcDir, string destDir, bool deleteOrig = false)
         {
             if (!Directory.Exists(srcDir))
                 return;
@@ -632,14 +758,17 @@ namespace RogueEssence.Dev
                 Directory.CreateDirectory(destDir);
 
             foreach (string directory in Directory.GetDirectories(srcDir))
-                mergeStringXmlRecursive(directory, Path.Combine(destDir, Path.GetFileName(directory)));
+                mergeStringXmlRecursive(directory, Path.Combine(destDir, Path.GetFileName(directory)), deleteOrig);
 
             foreach (string file in Directory.GetFiles(srcDir))
             {
                 if (Path.GetExtension(file) == ".resx")
+                {
                     mergeStringXml(file, Path.Combine(destDir, Path.GetFileName(file)));
-                else
-                    File.Copy(file, Path.Combine(destDir, Path.GetFileName(file)), true);
+
+                    if (deleteOrig)
+                        File.Delete(file);
+                }
             }
         }
 
@@ -650,6 +779,33 @@ namespace RogueEssence.Dev
             foreach (string key in srcDict.Keys)
                 destDict[key] = srcDict[key];
             Text.SaveStringResx(destPath, destDict);
+        }
+
+        private static void mergeEntryData(string outputPath, string subfolder, string ext)
+        {
+            //all files from base, and all files that were changed
+            foreach (string dir in Directory.GetFiles(PathMod.NoMod(Path.Combine(DataManager.DATA_PATH, subfolder))))
+            {
+                string fileName = Path.GetFileNameWithoutExtension(dir);
+                string fileExt = Path.GetExtension(dir);
+
+                if (fileExt == ext || fileExt == DataManager.PATCH_EXT)
+                {
+                    IEntryData data = DataManager.LoadEntryData<IEntryData>(fileName, subfolder, ext);
+                    DataManager.SaveObject(data, Path.Combine(outputPath, DataManager.DATA_PATH, subfolder, fileName + ext));
+                }
+            }
+
+            //all files that were added
+            string destDir = Path.Combine(outputPath, DataManager.DATA_PATH, subfolder);
+            if (Directory.Exists(PathMod.HardMod(Path.Combine(DataManager.DATA_PATH, subfolder))))
+            {
+                foreach (string dir in Directory.GetFiles(PathMod.HardMod(Path.Combine(DataManager.DATA_PATH, subfolder)), "*" + ext))
+                {
+                    if (!File.Exists(Path.Combine(destDir, Path.GetFileName(dir))))
+                        File.Copy(dir, Path.Combine(destDir, Path.GetFileName(dir)));
+                }
+            }
         }
     }
 }

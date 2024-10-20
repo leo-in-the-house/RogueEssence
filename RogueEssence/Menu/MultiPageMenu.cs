@@ -135,5 +135,24 @@ namespace RogueEssence.Menu
             int index = totalIndex % SpacesPerPage;
             return TotalChoices[page][index];
         }
+
+        public override List<IChoosable> ExportChoices()
+        {
+            List<IChoosable> allChoices = new List<IChoosable>();
+            foreach (IChoosable[] page in TotalChoices)
+                foreach (IChoosable choice in page)
+                    allChoices.Add(choice);
+            return allChoices;
+        }
+        public override void ImportChoices(params IChoosable[] choices)
+        {
+            TotalChoices = SortIntoPages(choices, SpacesPerPage);
+            SetPage(CurrentPage);
+        }
+
+        public override Dictionary<string, int> GetChoiceIndicesByLabel(params string[] labels)
+        {
+            return SearchLabels(labels, ExportChoices());
+        }
     }
 }
