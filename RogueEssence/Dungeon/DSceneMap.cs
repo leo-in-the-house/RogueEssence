@@ -1083,6 +1083,12 @@ namespace RogueEssence.Dungeon
                 {
                     if (!silent)
                     {
+                        if (loc != start)
+                        {
+                            ItemAnim itemAnim = new ItemAnim(start * GraphicsManager.TileSize + new Loc(GraphicsManager.TileSize / 2), loc * GraphicsManager.TileSize + new Loc(GraphicsManager.TileSize / 2), mapItem.IsMoney ? GraphicsManager.MoneySprite : DataManager.Instance.GetItem(mapItem.Value).Sprite, GraphicsManager.TileSize / 2, 1);
+                            CreateAnim(itemAnim, DrawLayer.Normal);
+                            yield return new WaitForFrames(ItemAnim.ITEM_ACTION_TIME);
+                        }
                         LogMsg(Text.FormatKey("MSG_MAP_ITEM_LOST", itemName));
                         yield return CoroutineManager.Instance.StartCoroutine(DungeonScene.Instance.ProcessBattleFX(loc, loc, Dir8.Down, DataManager.Instance.ItemLostFX));
                     }
@@ -1101,7 +1107,7 @@ namespace RogueEssence.Dungeon
                 }
             }
             Tile tile = ZoneManager.Instance.CurrentMap.GetTile(loc);
-            TerrainData terrain = tile.Data.GetData();
+            TerrainData terrain = (TerrainData)tile.Data.GetData();
             if (terrain.ItemLand == TerrainData.TileItemLand.Destroy)
             {
                 if (!silent)
@@ -1575,7 +1581,7 @@ namespace RogueEssence.Dungeon
                 return true;
 
             Tile tile = ZoneManager.Instance.CurrentMap.Tiles[loc.X][loc.Y];
-            TerrainData terrain = tile.Data.GetData();
+            TerrainData terrain = (TerrainData)tile.Data.GetData();
             if (terrain.BlockLight)
                 return true;
             //TileData effect = DataManager.Instance.GetTile(tile.Effect.ID);
@@ -1655,7 +1661,7 @@ namespace RogueEssence.Dungeon
 
             if (tile != null)//TODO: make this not so hardcoded??
             {
-                TerrainData terrain = tile.Data.GetData();
+                TerrainData terrain = (TerrainData)tile.Data.GetData();
                 return (terrain.BlockType == TerrainData.Mobility.Lava || terrain.BlockType == TerrainData.Mobility.Block);
             }
 
