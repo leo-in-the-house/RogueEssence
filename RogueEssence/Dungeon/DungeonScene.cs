@@ -656,8 +656,9 @@ namespace RogueEssence.Dungeon
                             ShownHotkeys[ii].SetArrangement(DiagManager.Instance.GamePadActive);
                             if (!String.IsNullOrEmpty(skill.SkillNum))
                             {
-                                SkillData skillData = DataManager.Instance.GetSkill(skill.SkillNum);
-                                ShownHotkeys[ii].SetSkill(skillData.GetColoredName(), skillData.Data.Element, skill.Charges, skillData.BaseCharges+FocusedCharacter.ChargeBoost, skill.Sealed);
+                                EntryDataIndex idx = DataManager.Instance.DataIndices[DataManager.DataType.Skill];
+                                SkillDataSummary summary = (SkillDataSummary)idx.Get(skill.SkillNum);
+                                ShownHotkeys[ii].SetSkill(summary.GetColoredName(), summary.Element, skill.Charges, summary.BaseCharges+FocusedCharacter.ChargeBoost, skill.Sealed);
                             }
                             else
                                 ShownHotkeys[ii].SetSkill("", DataManager.Instance.DefaultElement, 0, 0, false);
@@ -1474,7 +1475,7 @@ namespace RogueEssence.Dungeon
             GraphicsManager.SysFont.DrawText(spriteBatch, GraphicsManager.WindowWidth - 2, 52, String.Format("Total {0:D6}", DataManager.Instance.Save.TotalTurns), null, DirV.Up, DirH.Right, Color.White);
 
             if (SeeAll)
-                GraphicsManager.SysFont.DrawText(spriteBatch, 2, 92, "See All", null, DirV.Up, DirH.Left, Color.LightYellow);
+                GraphicsManager.SysFont.DrawText(spriteBatch, 2, 102, "See All", null, DirV.Up, DirH.Left, Color.LightYellow);
 
             if (FocusedCharacter != null)
             {
