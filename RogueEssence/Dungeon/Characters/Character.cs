@@ -289,11 +289,6 @@ namespace RogueEssence.Dungeon
         public int TurnWait { get; set; }
 
         /// <summary>
-        /// The number of turn tiers that this character has moved OR acted on.
-        /// </summary>
-        public int TiersUsed { get; set; }
-
-        /// <summary>
         /// Whether the character has made an action during this map turn.  Only one action per map turn permitted.
         /// </summary>
         public bool TurnUsed { get; set; }
@@ -615,7 +610,7 @@ namespace RogueEssence.Dungeon
         /// <summary>
         /// 
         /// </summary>
-        /// <param name="refresh">True if you want to carry out a refresh, false otherwise</param>
+        /// <param name="fullRefresh">True if you want to carry out a refresh, false otherwise</param>
         public void FullRestore(bool fullRefresh = true)
         {
             if (Dead)
@@ -1168,7 +1163,13 @@ namespace RogueEssence.Dungeon
             RefreshTraits();
         }
 
-        public void LearnIntrinsic(string intrinsicNum, int slot = -1)
+        /// <summary>
+        /// Gives the character a new base intrinsic, updating all current intrinsic backreferences.
+        /// </summary>
+        /// <param name="intrinsicNum">The intrinsic to learn</param>
+        /// <param name="slot">The slot to replace the new intrinsic into.  -1 to add it to the earliest available slot.</param>
+        /// <exception cref="Exception"></exception>
+        public void LearnIntrinsic(string intrinsicNum, int slot = -1, bool refresh = true)
         {
             if (slot == -1)
             {
@@ -1192,7 +1193,8 @@ namespace RogueEssence.Dungeon
                     Intrinsics[ii].Element = new Intrinsic(BaseIntrinsics[slot]);
             }
 
-            RefreshTraits();
+            if (refresh)
+                RefreshTraits();
         }
 
 
@@ -1248,6 +1250,14 @@ namespace RogueEssence.Dungeon
             RefreshTraits(fullRefresh);
         }
 
+
+
+        /// <summary>
+        /// Gives the characetr a new skill, placing it in the earliest available slot.
+        /// </summary>
+        /// <param name="skillNum"></param>
+        /// <param name="enabled"></param>
+        /// <param name="refresh"></param>
         public void LearnSkill(string skillNum, bool enabled, bool refresh = true)
         {
             int newSlot = 0;
@@ -1259,6 +1269,8 @@ namespace RogueEssence.Dungeon
             if (newSlot < MAX_SKILL_SLOTS)
                 ReplaceSkill(skillNum, newSlot, enabled, refresh);
         }
+
+
         public void ReplaceSkill(string skillNum, int newSlot, bool enabled, bool refresh = true)
         {
             List<int> skillIndices = baseReplaceSkill(skillNum, newSlot, enabled);

@@ -354,6 +354,7 @@ namespace RogueEssence.Script
         public const string SCRIPT_VARS_NAME = "SV"; //Name of the table of script variables that gets loaded and saved with the game
         public const string EVENT_SINGLE_NAME = "SINGLE_CHAR_SCRIPT";
         public const string EVENT_BATTLE_NAME = "BATTLE_SCRIPT";
+        public const string EVENT_CONDITION_NAME = "CONDITION_SCRIPT";
         public const string EVENT_STATUS_NAME = "STATUS_SCRIPT";
         public const string EVENT_MAPSTATUS_NAME = "MAP_STATUS_SCRIPT";
         public const string EVENT_ITEM_NAME = "ITEM_SCRIPT";
@@ -971,9 +972,9 @@ namespace RogueEssence.Script
             if (loaded != null)
             {
                 loaded.ActiveTeam.LoadLua();
+                //Tell the script we've just resumed a save!
+                m_scrsvc.Publish(EServiceEvents.LoadSavedData.ToString());
             }
-            //Tell the script we've just resumed a save!
-            m_scrsvc.Publish(EServiceEvents.LoadSavedData.ToString());
         }
 
         /// <summary>
